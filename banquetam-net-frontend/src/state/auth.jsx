@@ -3,36 +3,37 @@ import { createContext, useContext, useMemo, useState } from "react";
 const AuthCtx = createContext(null);
 
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(() => {
-        const raw = localStorage.getItem("user");
-        return raw ? JSON.parse(raw) : null;
-    });
+    const [userToken, setUserToken] = useState(localStorage.getItem("userToken") || "");
+    const [adminToken, setAdminToken] = useState(localStorage.getItem("adminToken") || "");
 
-    const isAuthed = !!localStorage.getItem("userToken");
-
-    const value = useMemo(
-        () => ({
-            user,
-            isAuthed,
-            setSession: ({ token, user }) => {
-                localStorage.setItem("userToken", token);
-                localStorage.setItem("user", JSON.stringify(user));
-                setUser(user);
-            },
-            logout: () => {
-                localStorage.removeItem("userToken");
-                localStorage.removeItem("user");
-                setUser(null);
-            },
-        }),
-        [user, isAuthed]
-    );
+    const value = useMemo(() => ({
+        userToken,
+        adminToken,
+        setUserToken: (t) => {
+            setUserToken(t);
+            if (t) localStorage.setItem("userToken", t);
+            else localStorage.removeItem("userToken");
+        },
+        setAdminToken: (t) => {
+            setAdminToken(t);
+            if (t) localStorage.setItem("adminToken", t);
+            else localStorage.removeItem("adminToken");
+        },
+        logoutUser: () => {
+            setUserToken("");
+            localStorage.removeItem("userToken");
+        },
+        logoutAdmin: () => {
+            setAdminToken("");
+            localStorage.removeItem("adminToken");
+        },
+    }), [userToken, adminToken]);
 
     return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 
 export function useAuth() {
-    const v = useContext(AuthCtx);
-    if (!v) throw new Error("useAuth must be inside AuthProvider");
-    return v;
+    const ctx = useContext(AuthCtx);
+    if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+    return ctx;
 }

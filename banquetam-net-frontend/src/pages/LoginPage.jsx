@@ -1,52 +1,57 @@
-import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
+import { useNavigate, Link } from "react-router-dom";
+import { AppShell } from "../layout/AppShell";
+import { apiFetch } from "../api/http";
+import { storage } from "../utils/storage";
 
-import AppHeader from "../components/AppHeader.jsx";
-import HeroTop from "../components/HeroTop.jsx";
-import Input from "../components/Input.jsx";
-import Button from "../components/Button.jsx";
-import { api } from "../api/index.js";
-import { useAuth } from "../state/auth.jsx";
-
-export default function LoginPage() {
+export function LoginPage() {
     const nav = useNavigate();
-    const { setSession } = useAuth();
-
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+    const { register, handleSubmit, formState: { isSubmitting } } = useForm({
         defaultValues: { login: "", password: "" },
-        mode: "onBlur",
     });
 
     async function onSubmit(values) {
-        const res = await api.login(values);
-        setSession({ token: res.token, user: res.user });
-        toast.success("Вход выполнен");
-        nav("/profile");
+        try {
+            const data = await apiFetch("/api/auth/login", { method: "POST", body: values });
+            storage.setUserToken(data.token);
+            toast.success("Вход выполнен");
+            nav("/profile");
+        } catch (e) {
+            toast.error(e.message);
+        }
     }
 
     return (
-        <div>
-            <AppHeader />
-            <HeroTop title="Вход" subtitle="Авторизация по логину и паролю" />
+        <AppShell title="Вход">
+            <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
+                <div>
+                    <div className="text-sm font-medium mb-1">Логин</div>
+                    <input className="inp" {...register("login")} placeholder="user123" />
+                </div>
+                <div>
+                    <div className="text-sm font-medium mb-1">Пароль</div>
+                    <input className="inp" type="password" {...register("password")} placeholder="********" />
+                </div>
 
-            <main className="px-4 py-4">
-                <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
-                    <Input label="Логин" error={errors.login?.message} {...register("login", { required: "Введите логин" })} />
-                    <Input label="Пароль" type="password" error={errors.password?.message} {...register("password", { required: "Введите пароль" })} />
+                <button disabled={isSubmitting} className="w-full rounded-xl bg-slate-900 text-white py-2 font-medium disabled:opacity-50">
+                    Войти
+                </button>
 
-                    <Button disabled={isSubmitting} type="submit">Войти</Button>
+                <div className="text-sm text-center text-slate-600">
+                    Еще не зарегистрированы?{" "}
+                    <Link className="text-slate-900 underline" to="/register">Регистрация</Link>
+                </div>
 
-                    <div className="text-center text-help-12">
-                        Еще не зарегистрированы?{" "}
-                        <Link className="text-crimson" to="/register">Регистрация</Link>
-                    </div>
+                <div className="text-xs text-center text-slate-500">
+                    Админ? <Link className="underline" to="/admin/login">Вход администратора</Link>
+                </div>
+            </form>
 
-                    <div className="flex justify-center pt-2">
-                        <img src="/social/soc.png" alt="social" className="h-7 opacity-90" />
-                    </div>
-                </form>
-            </main>
-        </div>
+            <style>{`
+        .inp{width:100%;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:14px;outline:none}
+        .inp:focus{border-color:#0f172a;box-shadow:0 0 0 3px rgba(15,23,42,.08)}
+      `}</style>
+        </AppShell>
     );
 }

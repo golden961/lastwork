@@ -1,22 +1,30 @@
-import axios from "axios";
+const API_URL = import.meta.env.VITE_API_URL;
 
-export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-export const USE_MOCK = (import.meta.env.VITE_USE_MOCK || "true") === "true";
+export async function apiFetch(path, { method = "GET", token, body } = {}) {
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
 
-export const http = axios.create({
-    baseURL: API_URL,
-    timeout: 10000,
-});
+    const res = await fetch(`${API_URL}${path}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+    });
 
-http.interceptors.request.use((config) => {
-    const token = localStorage.getItem("userToken");
-    const adminToken = localStorage.getItem("adminToken");
-
-    if (token && !config.url?.startsWith("/admin")) {
-        config.headers.Authorization = `Bearer ${token}`;
+    let data = null;
+    try {
+        data = await res.json();
+    } catch {
+        // ok
     }
-    if (adminToken && config.url?.startsWith("/admin")) {
-        config.headers.Authorization = `Bearer ${adminToken}`;
+
+    if (!res.ok) {
+        const message = data?.message || `HTTP ${res.status}`;
+        const errors = data?.errors || null;
+        const err = new Error(message);
+        err.status = res.status;
+        err.errors = errors;
+        throw err;
     }
-    return config;
-});
+
+    return data;
+}

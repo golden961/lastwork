@@ -1,111 +1,115 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { CalendarDays, CreditCard, Check } from "lucide-react";
 
-import AppHeader from "../components/AppHeader.jsx";
-import HeroTop from "../components/HeroTop.jsx";
-import Select from "../components/Select.jsx";
-import Input from "../components/Input.jsx";
-import Button from "../components/Button.jsx";
+import { AppShell } from "../layout/AppShell";
+import { apiFetch } from "../api/http";
+import { storage } from "../utils/storage";
+import { Card, CardBody } from "../ui/Card";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
+import { Select } from "../ui/Select";
+import { normalizeDateInput } from "../utils/format";
 
-import { api } from "../api/index.js";
-import { useAuth } from "../state/auth.jsx";
-
-const ROOMS = [
-    { id: "hall", label: "Зал", image: "/assets/66155ef0748e9.jpg" },
-    { id: "restaurant", label: "Ресторан", image: "/assets/unnamed%20(2).webp" },
-    { id: "summer", label: "Летняя веранда", image: "/assets/1671649122_idei-club-p-veranda-.jpg" },
-    { id: "closed", label: "Закрытая веранда", image: "/assets/3505f015e0d26644e8e4c.jpg" },
-];
-
-const PAYMENTS = [
-    { id: "cash", label: "Наличные" },
-    { id: "card", label: "Карта" },
-    { id: "online", label: "Онлайн" },
-];
-
-// маска ДД.ММ.ГГГГ
-function maskDate(v) {
-    const digits = v.replace(/\D/g, "").slice(0, 8);
-    const dd = digits.slice(0, 2);
-    const mm = digits.slice(2, 4);
-    const yyyy = digits.slice(4, 8);
-    let out = dd;
-    if (mm) out += "." + mm;
-    if (yyyy) out += "." + yyyy;
-    return out;
-}
-
-function isValidDateStr(s) {
-    if (!/^\d{2}\.\d{2}\.\d{4}$/.test(s)) return false;
-    const [d, m, y] = s.split(".").map(Number);
-    if (y < 1900 || y > 2100) return false;
-    if (m < 1 || m > 12) return false;
-    if (d < 1 || d > 31) return false;
-    return true;
-}
-
-export default function BookingPage() {
+export function BookingPage() {
     const nav = useNavigate();
-    const { user } = useAuth();
+    const token = storage.getUserToken();
 
+    const [rooms, setRooms] = useState([]);
     const [roomId, setRoomId] = useState("");
-    const [date, setDate] = useState("");
-    const [paymentMethod, setPaymentMethod] = useState("");
+    const [paymentMethod, setPaymentMethod] = useState("CASH");
+    const [startDate, setStartDate] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
-    const room = useMemo(() => ROOMS.find((r) => r.id === roomId), [roomId]);
+    useEffect(() => {
+        (async () => {
+            setLoading(true);
+            try {
+                const data = await apiFetch("/api/rooms");
+                setRooms(data.rooms || []);
+                setRoomId(String(data.rooms?.[0]?.id || ""));
+            } catch (e) {
+                toast.error(e.message);
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, []);
 
     async function submit() {
         if (!roomId) return toast.error("Выберите помещение");
-        if (!isValidDateStr(date)) return toast.error("Введите дату в формате ДД.ММ.ГГГГ");
-        if (!paymentMethod) return toast.error("Выберите способ оплаты");
+        if (!startDate || startDate.length !== 10) return toast.error("Дата должна быть в формате ДД.ММ.ГГГГ");
 
-        await api.createBooking(user.id, { roomId, date, paymentMethod });
-        toast.success("Заявка создана и отправлена администратору");
-        nav("/profile");
+        setSaving(true);
+        try {
+            await apiFetch("/api/bookings", {
+                method: "POST",
+                token,
+                body: { roomId: Number(roomId), startDate, paymentMethod },
+            });
+            toast.success("Заявка создана и отправлена администратору");
+            nav("/profile");
+        } catch (e) {
+            toast.error(e.message);
+        } finally {
+            setSaving(false);
+        }
     }
 
     return (
-        <div>
-            <AppHeader />
-            <HeroTop title="Оформление заявки" subtitle="Выберите помещение, дату и оплату" />
+        <AppShell title="Оформление заявки" backTo="/profile">
+            <div className="space-y-4">
+                <Card>
+                    <CardBody className="space-y-3">
+                        <div className="text-sm font-semibold">Данные заявки</div>
 
-            <main className="px-4 py-4 space-y-3">
-                <Select label="Помещение" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-                    <option value="">— Выберите —</option>
-                    {ROOMS.map((r) => (
-                        <option key={r.id} value={r.id}>{r.label}</option>
-                    ))}
-                </Select>
-
-                {room ? (
-                    <div className="rounded-2xl border border-gold bg-white p-3 flex gap-3">
-                        <img src={room.image} alt={room.label} className="w-20 h-20 rounded-xl object-cover" />
                         <div>
-                            <div className="h3">{room.label}</div>
-                            <div className="text-help-12">Фото из приложений М1/М2</div>
+                            <div className="text-xs font-semibold text-slate-700 mb-1">Помещение</div>
+                            <Select value={roomId} onChange={(e) => setRoomId(e.target.value)} disabled={loading}>
+                                {rooms.map((r) => (
+                                    <option key={r.id} value={r.id}>
+                                        {r.title}
+                                    </option>
+                                ))}
+                            </Select>
                         </div>
-                    </div>
-                ) : null}
 
-                <Input
-                    label="Дата начала банкета (ДД.ММ.ГГГГ)"
-                    placeholder="27.02.2026"
-                    value={date}
-                    onChange={(e) => setDate(maskDate(e.target.value))}
-                />
+                        <div>
+                            <div className="text-xs font-semibold text-slate-700 mb-1 flex items-center gap-2">
+                                <CalendarDays size={14} /> Дата начала (ДД.ММ.ГГГГ)
+                            </div>
+                            <Input
+                                value={startDate}
+                                onChange={(e) => setStartDate(normalizeDateInput(e.target.value))}
+                                placeholder="27.02.2026"
+                                inputMode="numeric"
+                            />
+                        </div>
 
-                <Select label="Способ оплаты" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                    <option value="">— Выберите —</option>
-                    {PAYMENTS.map((p) => (
-                        <option key={p.id} value={p.label}>{p.label}</option>
-                    ))}
-                </Select>
+                        <div>
+                            <div className="text-xs font-semibold text-slate-700 mb-1 flex items-center gap-2">
+                                <CreditCard size={14} /> Способ оплаты
+                            </div>
+                            <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                                <option value="CASH">Наличные</option>
+                                <option value="CARD">Карта</option>
+                                <option value="ONLINE">Онлайн</option>
+                            </Select>
+                        </div>
 
-                <Button type="button" onClick={submit}>
-                    Отправить заявку
-                </Button>
-            </main>
-        </div>
+                        <Button disabled={saving} onClick={submit} className="w-full">
+                            <Check size={16} />
+                            {saving ? "Сохранение…" : "Отправить заявку"}
+                        </Button>
+
+                        <div className="text-xs text-slate-500">
+                            После отправки заявка будет иметь статус <span className="font-semibold">«Новая»</span> и уйдёт на проверку администратору.
+                        </div>
+                    </CardBody>
+                </Card>
+            </div>
+        </AppShell>
     );
 }

@@ -1,70 +1,76 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppHeader from "../components/AppHeader.jsx";
-import HeroTop from "../components/HeroTop.jsx";
-import Button from "../components/Button.jsx";
-import { useAuth } from "../state/auth.jsx";
+import MainHeader from "../components/MainHeader.jsx";
+import HomeCarousel from "../components/HomeCarousel.jsx";
+import MainFooter from "../components/MainFooter.jsx";
+
+const ROOMS = [
+    { id: "hall", title: "Зал", img: "/assets/66155ef0748e9.jpg", desc: "Для торжеств, юбилеев и банкетов" },
+    { id: "restaurant", title: "Ресторан", img: "/assets/unnamed%20(2).webp", desc: "Сервис и атмосфера для вечера" },
+    { id: "summer", title: "Летняя веранда", img: "/assets/1671649122_idei-club-p-veranda-.jpg", desc: "Свежий воздух и красивые виды" },
+    { id: "closed", title: "Закрытая веранда", img: "/assets/3505f015e0d26644e8e4c.jpg", desc: "Уют круглый год и в любую погоду" },
+];
 
 export default function HomePage() {
     const nav = useNavigate();
-    const { isAuthed, user } = useAuth();
+    const isAuthed = !!localStorage.getItem("userToken");
 
-    function goBooking() {
+    const goBooking = () => {
         if (!isAuthed) {
             toast.error("Чтобы забронировать, нужно войти или зарегистрироваться");
             nav("/login");
             return;
         }
         nav("/booking");
-    }
+    };
 
     return (
-        <div>
-            <AppHeader />
-            <HeroTop
-                title="Банкетам.Нет"
-                subtitle="Бронирование залов и веранд — быстро и удобно"
-            />
+        <div className="mobile-shell">
+            <MainHeader />
 
-            <main className="px-4 py-4 space-y-3">
-                <div className="bg-white rounded-2xl border border-gold p-3">
-                    <div className="h2">Помещения</div>
-                    <div className="text-help-12 mb-3">
-                        Зал · Ресторан · Летняя веранда · Закрытая веранда
-                    </div>
+            <div className="page">
+                <HomeCarousel />
 
-                    <div className="grid grid-cols-2 gap-2">
-                        <img className="w-full h-24 rounded-xl object-cover" src="/assets/66155ef0748e9.jpg" alt="Зал" />
-                        <img className="w-full h-24 rounded-xl object-cover" src="/assets/unnamed%20(2).webp" alt="Ресторан" />
-                        <img className="w-full h-24 rounded-xl object-cover" src="/assets/1671649122_idei-club-p-veranda-.jpg" alt="Летняя веранда" />
-                        <img className="w-full h-24 rounded-xl object-cover" src="/assets/3505f015e0d26644e8e4c.jpg" alt="Закрытая веранда" />
-                    </div>
+                <div style={{ height: 12 }} />
+
+                <div className="btnRow">
+                    <button className="btnPrimary" type="button" onClick={goBooking}>
+                        Забронировать
+                    </button>
+
+                    {!isAuthed ? (
+                        <button className="btnGhost" type="button" onClick={() => nav("/register")}>
+                            Регистрация
+                        </button>
+                    ) : (
+                        <button className="btnGhost" type="button" onClick={() => nav("/profile")}>
+                            Мои заявки
+                        </button>
+                    )}
                 </div>
 
-                <Button type="button" onClick={goBooking}>
-                    Забронировать помещение
-                </Button>
+                <div style={{ height: 14 }} />
 
-                {isAuthed ? (
-                    <>
-                        <Link to="/profile">
-                            <Button variant="secondary" type="button">
-                                Перейти в личный кабинет ({user?.login})
-                            </Button>
-                        </Link>
-                    </>
-                ) : (
-                    <>
-                        <Link to="/login">
-                            <Button variant="secondary" type="button">Войти</Button>
-                        </Link>
-                        <Link to="/register">
-                            <Button variant="secondary" type="button">Регистрация</Button>
-                        </Link>
-                    </>
-                )}
-            </main>
+                <section className="section">
+                    <div className="sectionTitle">Выберите помещение</div>
+                    <div className="sectionSub">Зал · Ресторан · Летняя веранда · Закрытая веранда</div>
+
+                    <div className="grid2">
+                        {ROOMS.map((r) => (
+                            <button key={r.id} type="button" className="roomCard" onClick={goBooking}>
+                                <img src={r.img} alt={r.title} className="roomImg" onError={(e) => (e.currentTarget.src = "/assets/None-106945.jpg")} />
+                                <div className="roomBody">
+                                    <div className="roomTitle">{r.title}</div>
+                                    <div className="roomDesc">{r.desc}</div>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </section>
+
+                <MainFooter />
+            </div>
         </div>
     );
 }

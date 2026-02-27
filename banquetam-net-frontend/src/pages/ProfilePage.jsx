@@ -1,153 +1,182 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { Plus, LogOut, Star } from "lucide-react";
 
-import AppHeader from "../components/AppHeader.jsx";
-import HeroTop from "../components/HeroTop.jsx";
-import Slider from "../components/Slider.jsx";
-import Button from "../components/Button.jsx";
-import Input from "../components/Input.jsx";
+import { AppShell } from "../layout/AppShell";
+import { apiFetch } from "../api/http";
+import { storage } from "../utils/storage";
+import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
+import { Card, CardBody } from "../ui/Card";
+import { Textarea } from "../ui/Textarea";
+import { ruPayment, ruStatus, statusTone, toDDMMYYYY } from "../utils/format";
+import { Slider } from "../components/Slider";
 
-import { api } from "../api/index.js";
-import { useAuth } from "../state/auth.jsx";
+export function ProfilePage() {
+    const nav = useNavigate();
+    const token = storage.getUserToken();
 
-const ROOM_MAP = {
-    hall: { label: "Зал", image: "/assets/66155ef0748e9.jpg" },
-    restaurant: { label: "Ресторан", image: "/assets/unnamed%20(2).webp" },
-    summer: { label: "Летняя веранда", image: "/assets/1671649122_idei-club-p-veranda-.jpg" },
-    closed: { label: "Закрытая веранда", image: "/assets/3505f015e0d26644e8e4c.jpg" },
-};
-
-export default function ProfilePage() {
-    const { user, logout } = useAuth();
+    const [me, setMe] = useState(null);
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    const [reviewBookingId, setReviewBookingId] = useState("");
-    const [reviewText, setReviewText] = useState("");
-
-    const canLeaveReview = useMemo(() => {
-        const b = bookings.find((x) => x.id === reviewBookingId);
-        return b?.status === "Банкет завершен"; // правило сейчас строго так
-    }, [bookings, reviewBookingId]);
+    const [reviewTextById, setReviewTextById] = useState({});
 
     async function load() {
         setLoading(true);
         try {
-            const res = await api.myBookings(user.id);
-            setBookings(res.bookings || []);
+            const [meRes, bRes] = await Promise.all([
+                apiFetch("/api/me", { token }),
+                apiFetch("/api/bookings/my", { token }),
+            ]);
+            setMe(meRes.user);
+            setBookings(bRes.bookings || []);
+        } catch (e) {
+            toast.error(e.message);
         } finally {
             setLoading(false);
         }
     }
 
-    useEffect(() => {
-        load();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    useEffect(() => { load(); }, []);
 
-    async function submitReview() {
-        if (!reviewBookingId) return toast.error("Выберите заявку");
-        if (!reviewText.trim()) return toast.error("Введите текст отзыва");
+    const stats = useMemo(() => {
+        const total = bookings.length;
+        const done = bookings.filter((b) => b.status === "DONE").length;
+        return { total, done };
+    }, [bookings]);
 
-        await api.createReview(user.id, { bookingId: reviewBookingId, text: reviewText.trim() });
-        toast.success("Отзыв отправлен");
-        setReviewText("");
-        setReviewBookingId("");
-        load();
+    function logout() {
+        storage.clearUserToken();
+        nav("/login");
+    }
+
+    async function submitReview(bookingId) {
+        const text = (reviewTextById[bookingId] || "").trim();
+        if (!text) return toast.error("Введите текст отзыва");
+
+        try {
+            await apiFetch("/api/reviews", { method: "POST", token, body: { bookingId, text } });
+            toast.success("Отзыв добавлен");
+            setReviewTextById((m) => ({ ...m, [bookingId]: "" }));
+            await load();
+        } catch (e) {
+            toast.error(e.message);
+        }
     }
 
     return (
-        <div>
-            <AppHeader />
-            <HeroTop title="Личный кабинет" subtitle={user?.fullName || user?.login} />
+        <AppShell title="Личный кабинет">
+            <div className="space-y-4">
+                <Card>
+                    <CardBody className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <div className="text-xs text-slate-500">Пользователь</div>
+                                <div className="text-sm font-semibold">{me?.fullName || "—"}</div>
+                                <div className="text-xs text-slate-500">{me?.email || ""}</div>
+                            </div>
 
-            <Slider />
+                            <Button variant="soft" onClick={logout}>
+                                <LogOut size={16} />
+                                Выйти
+                            </Button>
+                        </div>
 
-            <main className="px-4 py-4 space-y-4">
-                <div className="flex gap-2">
-                    <Link className="flex-1" to="/booking">
-                        <Button type="button">Оформить заявку</Button>
-                    </Link>
-                    <button
-                        type="button"
-                        className="flex-1 rounded-xl border border-gold text-gold bg-white py-3 font-semibold"
-                        onClick={logout}
-                    >
-                        Выйти
-                    </button>
+                        <div className="grid grid-cols-2 gap-2">
+                            <MiniStat label="Всего заявок" value={stats.total} />
+                            <MiniStat label="Завершено" value={stats.done} />
+                        </div>
+
+                        <div className="flex gap-2">
+                            <Button className="flex-1" onClick={() => nav("/booking/new")}>
+                                <Plus size={16} />
+                                Оформить заявку
+                            </Button>
+                            <Button variant="soft" onClick={load}>Обновить</Button>
+                        </div>
+                    </CardBody>
+                </Card>
+
+                {/* Слайдер по ТЗ */}
+                <Slider />
+
+                <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">История заявок</div>
+                    {loading ? <div className="text-xs text-slate-500">Загрузка…</div> : null}
                 </div>
 
-                <section className="bg-white rounded-2xl border border-gold p-3">
-                    <div className="h2 mb-2">Мои заявки</div>
+                {(!loading && bookings.length === 0) ? (
+                    <Card>
+                        <CardBody>
+                            <div className="text-sm font-medium">Заявок пока нет</div>
+                            <div className="text-xs text-slate-500 mt-1">Нажмите “Оформить заявку”, чтобы создать первую.</div>
+                        </CardBody>
+                    </Card>
+                ) : null}
 
-                    {loading ? (
-                        <div className="text-help-12">Загрузка...</div>
-                    ) : bookings.length === 0 ? (
-                        <div className="text-help-12">Заявок пока нет</div>
-                    ) : (
-                        <div className="space-y-3">
-                            {bookings.map((b) => {
-                                const room = ROOM_MAP[b.roomId] || { label: b.roomId, image: "/assets/None-106945.jpg" };
-                                return (
-                                    <div key={b.id} className="rounded-2xl border p-3">
-                                        <div className="flex gap-3">
-                                            <img src={room.image} alt={room.label} className="w-16 h-16 rounded-xl object-cover" />
-                                            <div className="flex-1">
-                                                <div className="h3">{room.label}</div>
-                                                <div className="text-help-12">Дата: {b.date}</div>
-                                                <div className="text-help-12">Оплата: {b.paymentMethod}</div>
-                                                <div className={`text-help-12 ${b.status === "Новая" ? "text-crimson" : "text-green"}`}>
-                                                    Статус: {b.status}
-                                                </div>
+                <div className="space-y-3">
+                    {bookings.map((b) => {
+                        const canReview = b.status === "DONE"; // ✅ под твой текущий бэкенд
+                        const already = Boolean(b.review);
+
+                        return (
+                            <Card key={b.id}>
+                                <CardBody className="space-y-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <div className="text-sm font-semibold">{b.room?.title || "Помещение"}</div>
+                                            <div className="text-xs text-slate-500 mt-1">
+                                                Дата: <span className="font-medium text-slate-700">{toDDMMYYYY(b.startAt)}</span>
+                                                {" · "}Оплата: <span className="font-medium text-slate-700">{ruPayment(b.paymentMethod)}</span>
                                             </div>
                                         </div>
-                                        <div className="text-[11px] text-gray-500 mt-2">ID: {b.id}</div>
+                                        <Badge tone={statusTone(b.status)}>{ruStatus(b.status)}</Badge>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </section>
 
-                <section className="bg-white rounded-2xl border border-gold p-3">
-                    <div className="h2 mb-2">Оставить отзыв</div>
+                                    {/* Отзыв */}
+                                    {already ? (
+                                        <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3">
+                                            <div className="text-xs font-semibold text-slate-700 flex items-center gap-2">
+                                                <Star size={14} /> Ваш отзыв
+                                            </div>
+                                            <div className="text-sm mt-1 text-slate-800">{b.review.text}</div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <div className="text-xs font-semibold text-slate-700">Оставить отзыв</div>
 
-                    <label className="block mb-2">
-                        <div className="text-help-12 mb-1">Выберите заявку</div>
-                        <select
-                            value={reviewBookingId}
-                            onChange={(e) => setReviewBookingId(e.target.value)}
-                            className="w-full rounded-xl border px-3 py-3 outline-none bg-white border-gray-300"
-                        >
-                            <option value="">— Выберите —</option>
-                            {bookings.map((b) => (
-                                <option key={b.id} value={b.id}>
-                                    {b.date} · {b.roomId} · {b.status}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                                            {!canReview ? (
+                                                <div className="text-xs text-slate-500">
+                                                    Отзыв доступен после статуса <span className="font-semibold">«Банкет завершен»</span>.
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <Textarea
+                                                        value={reviewTextById[b.id] || ""}
+                                                        onChange={(e) => setReviewTextById((m) => ({ ...m, [b.id]: e.target.value }))}
+                                                        placeholder="Напишите коротко, как всё прошло…"
+                                                    />
+                                                    <Button onClick={() => submitReview(b.id)}>Отправить</Button>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </CardBody>
+                            </Card>
+                        );
+                    })}
+                </div>
+            </div>
+        </AppShell>
+    );
+}
 
-                    <Input
-                        label="Текст отзыва"
-                        placeholder="Напишите ваш отзыв..."
-                        value={reviewText}
-                        onChange={(e) => setReviewText(e.target.value)}
-                    />
-
-                    <div className="mt-3">
-                        <Button type="button" disabled={!canLeaveReview} onClick={submitReview}>
-                            Отправить отзыв
-                        </Button>
-                        {!canLeaveReview ? (
-                            <div className="text-help-12 mt-2">
-                                Отзыв доступен только после статуса «Банкет завершен».
-                            </div>
-                        ) : null}
-                    </div>
-                </section>
-            </main>
+function MiniStat({ label, value }) {
+    return (
+        <div className="rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="text-xs text-slate-500">{label}</div>
+            <div className="text-lg font-extrabold text-slate-900">{value}</div>
         </div>
     );
 }

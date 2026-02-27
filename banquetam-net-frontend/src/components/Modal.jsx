@@ -1,15 +1,18 @@
-export default function Modal({ open, title, children, onClose }) {
+import { cn } from "../ui/cn";
+
+export function Modal({ open, title, children, onClose, footer }) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-            <div className="mobile-shell w-full">
-                <div className="m-4 bg-white rounded-2xl p-4 border border-gold">
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="h3">{title}</div>
-                        <button className="text-crimson font-bold" onClick={onClose}>×</button>
+        <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+            <div className="absolute inset-0 flex items-end justify-center p-3">
+                <div className={cn("w-[390px] max-w-full rounded-3xl bg-white shadow-xl border border-slate-200 overflow-hidden")}>
+                    <div className="px-4 py-3 border-b">
+                        <div className="text-sm font-semibold">{title}</div>
                     </div>
-                    {children}
+                    <div className="px-4 py-4">{children}</div>
+                    {footer ? <div className="px-4 py-3 border-t bg-slate-50">{footer}</div> : null}
                 </div>
             </div>
         </div>
