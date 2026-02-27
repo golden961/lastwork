@@ -1,30 +1,26 @@
-const API_URL = import.meta.env.VITE_API_URL;
+import axios from "axios";
 
-export async function apiFetch(path, { method = "GET", token, body } = {}) {
-    const headers = { "Content-Type": "application/json" };
-    if (token) headers.Authorization = `Bearer ${token}`;
+const baseURL = (import.meta.env.VITE_API_URL || "http://localhost:3001").replace(/\/$/, "");
+const withCredentials = (import.meta.env.VITE_API_WITH_CREDENTIALS || "false") === "true";
 
-    const res = await fetch(`${API_URL}${path}`, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-    });
+export const http = axios.create({
+    baseURL,
+    timeout: 15000,
+    withCredentials,
+});
 
-    let data = null;
-    try {
-        data = await res.json();
-    } catch {
-        // ok
+http.interceptors.request.use((config) => {
+    const userToken = localStorage.getItem("userToken");
+    const adminToken = localStorage.getItem("adminToken");
+
+    // если админ маршруты начинаются с /admin — подставим admin token
+    const isAdminReq = typeof config.url === "string" && config.url.startsWith("/admin");
+
+    if (isAdminReq && adminToken) {
+        config.headers.Authorization = `Bearer ${adminToken}`;
+    } else if (!isAdminReq && userToken) {
+        config.headers.Authorization = `Bearer ${userToken}`;
     }
 
-    if (!res.ok) {
-        const message = data?.message || `HTTP ${res.status}`;
-        const errors = data?.errors || null;
-        const err = new Error(message);
-        err.status = res.status;
-        err.errors = errors;
-        throw err;
-    }
-
-    return data;
-}
+    return config;
+});

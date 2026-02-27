@@ -3,37 +3,38 @@ import { createContext, useContext, useMemo, useState } from "react";
 const AuthCtx = createContext(null);
 
 export function AuthProvider({ children }) {
-    const [userToken, setUserToken] = useState(localStorage.getItem("userToken") || "");
-    const [adminToken, setAdminToken] = useState(localStorage.getItem("adminToken") || "");
+    const [user, setUser] = useState(() => {
+        const raw = localStorage.getItem("user");
+        return raw ? JSON.parse(raw) : null;
+    });
 
-    const value = useMemo(() => ({
-        userToken,
-        adminToken,
-        setUserToken: (t) => {
-            setUserToken(t);
-            if (t) localStorage.setItem("userToken", t);
-            else localStorage.removeItem("userToken");
-        },
-        setAdminToken: (t) => {
-            setAdminToken(t);
-            if (t) localStorage.setItem("adminToken", t);
-            else localStorage.removeItem("adminToken");
-        },
-        logoutUser: () => {
-            setUserToken("");
-            localStorage.removeItem("userToken");
-        },
-        logoutAdmin: () => {
-            setAdminToken("");
-            localStorage.removeItem("adminToken");
-        },
-    }), [userToken, adminToken]);
+    const token = localStorage.getItem("userToken") || "";
+    const isAuthed = !!token;
+
+    const value = useMemo(
+        () => ({
+            user,
+            token,
+            isAuthed,
+            setSession: ({ token, user }) => {
+                if (token) localStorage.setItem("userToken", token);
+                if (user) localStorage.setItem("user", JSON.stringify(user));
+                setUser(user || null);
+            },
+            logout: () => {
+                localStorage.removeItem("userToken");
+                localStorage.removeItem("user");
+                setUser(null);
+            },
+        }),
+        [user, token, isAuthed]
+    );
 
     return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 
 export function useAuth() {
     const ctx = useContext(AuthCtx);
-    if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+    if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
     return ctx;
 }

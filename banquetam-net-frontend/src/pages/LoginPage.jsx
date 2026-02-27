@@ -1,57 +1,93 @@
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import { useNavigate, Link } from "react-router-dom";
-import { AppShell } from "../layout/AppShell";
-import { apiFetch } from "../api/http";
-import { storage } from "../utils/storage";
 
-export function LoginPage() {
+import MainHeader from "../components/MainHeader.jsx";
+import { loginRequest } from "../api/auth.js";
+import { useAuth } from "../state/auth.jsx";
+
+export default function LoginPage() {
     const nav = useNavigate();
-    const { register, handleSubmit, formState: { isSubmitting } } = useForm({
-        defaultValues: { login: "", password: "" },
-    });
+    const { setSession } = useAuth();
+
+    const {
+        register,
+        handleSubmit,
+        setError,
+        formState: { errors, isSubmitting },
+    } = useForm({ mode: "onBlur", defaultValues: { login: "", password: "" } });
 
     async function onSubmit(values) {
         try {
-            const data = await apiFetch("/api/auth/login", { method: "POST", body: values });
-            storage.setUserToken(data.token);
+            const res = await loginRequest(values);
+
+            if (!res.token) {
+                toast.error("Бэкенд не вернул токен. Проверь формат ответа /auth/login");
+                return;
+            }
+
+            setSession({ token: res.token, user: res.user });
             toast.success("Вход выполнен");
             nav("/profile");
         } catch (e) {
-            toast.error(e.message);
+            const data = e?.response?.data;
+
+            // если бэк отдаёт ошибки по полям
+            if (data?.errors && typeof data.errors === "object") {
+                Object.entries(data.errors).forEach(([field, message]) => {
+                    setError(field, { type: "server", message: String(message) });
+                });
+                return;
+            }
+
+            const msg = data?.message || "Неверный логин или пароль";
+            toast.error(msg);
         }
     }
 
     return (
-        <AppShell title="Вход">
-            <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
-                <div>
-                    <div className="text-sm font-medium mb-1">Логин</div>
-                    <input className="inp" {...register("login")} placeholder="user123" />
-                </div>
-                <div>
-                    <div className="text-sm font-medium mb-1">Пароль</div>
-                    <input className="inp" type="password" {...register("password")} placeholder="********" />
-                </div>
+        <div className="mobile-shell">
+            <MainHeader />
 
-                <button disabled={isSubmitting} className="w-full rounded-xl bg-slate-900 text-white py-2 font-medium disabled:opacity-50">
-                    Войти
-                </button>
+            <div className="page">
+                <div className="section">
+                    <div className="sectionTitle">Вход</div>
+                    <div className="sectionSub">Авторизация по логину и паролю</div>
 
-                <div className="text-sm text-center text-slate-600">
-                    Еще не зарегистрированы?{" "}
-                    <Link className="text-slate-900 underline" to="/register">Регистрация</Link>
+                    <form className="mt-4 space-y-3" onSubmit={handleSubmit(onSubmit)}>
+                        <Field label="Логин" error={errors.login?.message}>
+                            <input className="field" {...register("login", { required: "Введите логин" })} />
+                        </Field>
+
+                        <Field label="Пароль" error={errors.password?.message}>
+                            <input className="field" type="password" {...register("password", { required: "Введите пароль" })} />
+                        </Field>
+
+                        <button className="btnPrimary" disabled={isSubmitting} type="submit">
+                            Войти
+                        </button>
+
+                        <div className="btnRow">
+                            <button className="btnGhost" type="button" onClick={() => nav("/register")}>
+                                Регистрация
+                            </button>
+                            <button className="btnGhost" type="button" onClick={() => nav("/admin")}>
+                                Админка
+                            </button>
+                        </div>
+                    </form>
                 </div>
+            </div>
+        </div>
+    );
+}
 
-                <div className="text-xs text-center text-slate-500">
-                    Админ? <Link className="underline" to="/admin/login">Вход администратора</Link>
-                </div>
-            </form>
-
-            <style>{`
-        .inp{width:100%;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:14px;outline:none}
-        .inp:focus{border-color:#0f172a;box-shadow:0 0 0 3px rgba(15,23,42,.08)}
-      `}</style>
-        </AppShell>
+function Field({ label, error, children }) {
+    return (
+        <label className="block">
+            <div className="text-[12px] font-bold text-black/70 mb-1">{label}</div>
+            {children}
+            {error ? <div className="text-[12px] mt-1 font-bold text-[var(--crimson)]">{error}</div> : null}
+        </label>
     );
 }

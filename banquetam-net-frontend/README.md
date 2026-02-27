@@ -1,16 +1,43 @@
-# React + Vite
+# Банкетам.Нет — Frontend (ДЭ 2026, Вариант 4)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Фронтенд для информационной системы бронирования помещений «Банкетам.Нет»  
+Демонстрационный экзамен 2026 — 09.02.07 «Информационные системы и программирование»  
+Квалификация: Разработчик веб и мультимедийных приложений
 
-Currently, two official plugins are available:
+## ✅ Функционал по ТЗ
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Обязательный функционал
+- Регистрация пользователя (логин/пароль + ФИО/телефон/email) с валидацией
+- Авторизация по логину/паролю + информативные уведомления
+- Личный кабинет: история заявок + возможность оставить отзыв
+- Создание заявки: выбор помещения, дата начала банкета, способ оплаты
+- Админ-панель: вход Admin26/Demo20, просмотр всех заявок, смена статуса:
+    - «Новая»
+    - «Банкет назначен»
+    - «Банкет завершен»
 
-## React Compiler
+### Дополнительный функционал (М2)
+- Подсказки рядом с полями при ошибках
+- Слайдер (4 изображения) с автопереключением каждые 3 секунды + вперед/назад
+- Админка: фильтры, сортировка, пагинация, модальные окна, уведомления (toast)
+- Отзыв доступен только после изменения статуса администратором (статус ≠ «Новая»)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Стек
+- Vite + React (JS)
+- react-router-dom
+- axios
+- react-hook-form + yup
+- TailwindCSS
+- react-hot-toast
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Шрифт и палитра — по приложенным материалам (Oswald + styleguide).
+
+---
+
+## Установка и запуск
+
+### 1) Установить зависимости
+```bash
+npm install

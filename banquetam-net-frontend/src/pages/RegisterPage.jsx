@@ -1,93 +1,110 @@
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { useNavigate, Link } from "react-router-dom";
-import { AppShell } from "../layout/AppShell";
-import { apiFetch } from "../api/http";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
-const schema = z.object({
-    login: z.string().regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/, "Логин: латиница+цифры, минимум 6"),
-    password: z.string().min(8, "Пароль: минимум 8 символов"),
-    fullName: z.string().min(1, "ФИО обязательно"),
-    phone: z.string().min(1, "Телефон обязателен"),
-    email: z.string().email("Некорректный e-mail"),
+import MainHeader from "../components/MainHeader.jsx";
+import { registerRequest } from "../api/auth.js";
+
+const schema = yup.object({
+    login: yup
+        .string()
+        .required("Логин обязателен")
+        .matches(/^[A-Za-z0-9]+$/, "Только латиница и цифры")
+        .min(6, "Минимум 6 символов"),
+    password: yup.string().required("Пароль обязателен").min(8, "Минимум 8 символов"),
+    fullName: yup.string().required("ФИО обязательно"),
+    phone: yup.string().required("Телефон обязателен"),
+    email: yup.string().required("Email обязателен").email("Некорректный email"),
 });
 
-export function RegisterPage() {
+export default function RegisterPage() {
     const nav = useNavigate();
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
-        resolver: zodResolver(schema),
-        defaultValues: { login: "", password: "", fullName: "", phone: "", email: "" },
-    });
+
+    const {
+        register,
+        handleSubmit,
+        setError,
+        formState: { errors, isSubmitting },
+    } = useForm({ resolver: yupResolver(schema), mode: "onBlur" });
 
     async function onSubmit(values) {
         try {
-            await apiFetch("/api/auth/register", { method: "POST", body: values });
+            await registerRequest(values);
             toast.success("Регистрация успешна");
             nav("/login");
         } catch (e) {
-            if (e.status === 409) toast.error("Логин уже занят");
-            else toast.error(e.message);
+            const data = e?.response?.data;
+
+            // если бэк отдаёт ошибки по полям: { errors: { login: "...", email: "..." } }
+            if (data?.errors && typeof data.errors === "object") {
+                Object.entries(data.errors).forEach(([field, message]) => {
+                    setError(field, { type: "server", message: String(message) });
+                });
+                return;
+            }
+
+            // если 409 (уникальность логина)
+            if (e?.response?.status === 409) {
+                setError("login", { type: "server", message: "Логин уже занят" });
+                return;
+            }
+
+            toast.error(data?.message || "Ошибка регистрации");
         }
     }
 
     return (
-        <AppShell title="Регистрация">
-            <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
-                <Field label="Логин" error={errors.login?.message}>
-                    <input className="inp" {...register("login")} placeholder="user123" />
-                </Field>
+        <div className="mobile-shell">
+            <MainHeader />
 
-                <Field label="Пароль" error={errors.password?.message}>
-                    <input className="inp" type="password" {...register("password")} placeholder="минимум 8 символов" />
-                </Field>
+            <div className="page">
+                <div className="section">
+                    <div className="sectionTitle">Регистрация</div>
+                    <div className="sectionSub">Заполните все поля</div>
 
-                <Field label="ФИО" error={errors.fullName?.message}>
-                    <input className="inp" {...register("fullName")} placeholder="Иванов Иван Иванович" />
-                </Field>
+                    <form className="mt-4 space-y-3" onSubmit={handleSubmit(onSubmit)}>
+                        <Field label="Логин" error={errors.login?.message}>
+                            <input className="field" placeholder="latin+digits, min 6" {...register("login")} />
+                        </Field>
 
-                <Field label="Телефон" error={errors.phone?.message}>
-                    <input className="inp" {...register("phone")} placeholder="+996..." />
-                </Field>
+                        <Field label="Пароль" error={errors.password?.message}>
+                            <input className="field" type="password" placeholder="min 8" {...register("password")} />
+                        </Field>
 
-                <Field label="Email" error={errors.email?.message}>
-                    <input className="inp" {...register("email")} placeholder="mail@example.com" />
-                </Field>
+                        <Field label="ФИО" error={errors.fullName?.message}>
+                            <input className="field" placeholder="Иванов Иван Иванович" {...register("fullName")} />
+                        </Field>
 
-                <button
-                    disabled={isSubmitting}
-                    className="w-full rounded-xl bg-slate-900 text-white py-2 font-medium disabled:opacity-50"
-                >
-                    Создать аккаунт
-                </button>
+                        <Field label="Телефон" error={errors.phone?.message}>
+                            <input className="field" placeholder="+996..." {...register("phone")} />
+                        </Field>
 
-                <div className="text-sm text-center text-slate-600">
-                    Уже зарегистрированы?{" "}
-                    <Link className="text-slate-900 underline" to="/login">Войти</Link>
+                        <Field label="E-mail" error={errors.email?.message}>
+                            <input className="field" placeholder="mail@example.com" {...register("email")} />
+                        </Field>
+
+                        <button className="btnPrimary" disabled={isSubmitting} type="submit">
+                            Создать аккаунт
+                        </button>
+
+                        <button className="btnGhost" type="button" onClick={() => nav("/login")}>
+                            Уже есть аккаунт? Войти
+                        </button>
+                    </form>
                 </div>
-            </form>
-
-            <StyleHelpers />
-        </AppShell>
+            </div>
+        </div>
     );
 }
 
 function Field({ label, error, children }) {
     return (
-        <div>
-            <div className="text-sm font-medium mb-1">{label}</div>
+        <label className="block">
+            <div className="text-[12px] font-bold text-black/70 mb-1">{label}</div>
             {children}
-            {error ? <div className="text-xs text-red-600 mt-1">{error}</div> : null}
-        </div>
-    );
-}
-
-function StyleHelpers() {
-    return (
-        <style>{`
-      .inp{width:100%;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:14px;outline:none}
-      .inp:focus{border-color:#0f172a;box-shadow:0 0 0 3px rgba(15,23,42,.08)}
-    `}</style>
+            {error ? <div className="text-[12px] mt-1 font-bold text-[var(--crimson)]">{error}</div> : null}
+        </label>
     );
 }
