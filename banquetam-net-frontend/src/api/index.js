@@ -1,95 +1,55 @@
 import toast from "react-hot-toast";
-import { USE_MOCK, http } from "./client";
+import { USE_MOCK, http } from "./http";
 import { mockApi } from "./mock";
 
-function errMsg(e) {
+function msg(e) {
     return e?.response?.data?.message || e?.message || "Ошибка";
 }
 
 export const api = {
-    async rooms() {
+    rooms() {
         if (USE_MOCK) return mockApi.rooms();
-        const { data } = await http.get("/rooms");
-        return data;
+        return http.get("/rooms").then((r) => r.data);
     },
 
-    async register(payload) {
-        try {
-            if (USE_MOCK) return await mockApi.register(payload);
-            const { data } = await http.post("/auth/register", payload);
-            return data;
-        } catch (e) {
-            toast.error(errMsg(e));
-            throw e;
-        }
+    register(dto) {
+        if (USE_MOCK) return mockApi.register(dto).catch((e) => (toast.error(e.message), Promise.reject(e)));
+        return http.post("/auth/register", dto).then((r) => r.data).catch((e) => (toast.error(msg(e)), Promise.reject(e)));
     },
 
-    async login(payload) {
-        try {
-            if (USE_MOCK) return await mockApi.login(payload);
-            const { data } = await http.post("/auth/login", payload);
-            return data;
-        } catch (e) {
-            toast.error(errMsg(e));
-            throw e;
-        }
+    login(dto) {
+        if (USE_MOCK) return mockApi.login(dto).catch((e) => (toast.error(e.message), Promise.reject(e)));
+        return http.post("/auth/login", dto).then((r) => r.data).catch((e) => (toast.error(msg(e)), Promise.reject(e)));
     },
 
-    async myBookings(userId) {
+    myBookings(userId) {
         if (USE_MOCK) return mockApi.myBookings(userId);
-        const { data } = await http.get("/bookings/my");
-        return data;
+        return http.get("/bookings/my").then((r) => r.data);
     },
 
-    async createBooking(userId, payload) {
-        try {
-            if (USE_MOCK) return await mockApi.createBooking(userId, payload);
-            const { data } = await http.post("/bookings", payload);
-            return data;
-        } catch (e) {
-            toast.error(errMsg(e));
-            throw e;
-        }
+    createBooking(userId, dto) {
+        if (USE_MOCK) return mockApi.createBooking(userId, dto).catch((e) => (toast.error(e.message), Promise.reject(e)));
+        return http.post("/bookings", dto).then((r) => r.data).catch((e) => (toast.error(msg(e)), Promise.reject(e)));
     },
 
-    async createReview(userId, payload) {
-        try {
-            if (USE_MOCK) return await mockApi.createReview(userId, payload);
-            const { data } = await http.post("/reviews", payload);
-            return data;
-        } catch (e) {
-            toast.error(errMsg(e));
-            throw e;
-        }
+    createReview(userId, dto) {
+        if (USE_MOCK) return mockApi.createReview(userId, dto).catch((e) => (toast.error(e.message), Promise.reject(e)));
+        return http.post("/reviews", dto).then((r) => r.data).catch((e) => (toast.error(msg(e)), Promise.reject(e)));
     },
 
-    async adminLogin(payload) {
-        try {
-            if (USE_MOCK) return await mockApi.adminLogin(payload);
-            const { data } = await http.post("/admin/login", payload);
-            return data;
-        } catch (e) {
-            toast.error(errMsg(e));
-            throw e;
-        }
+    adminLogin(dto) {
+        if (USE_MOCK) return mockApi.adminLogin(dto).catch((e) => (toast.error(e.message), Promise.reject(e)));
+        return http.post("/admin/login", dto).then((r) => r.data).catch((e) => (toast.error(msg(e)), Promise.reject(e)));
     },
 
-    async adminList(payload) {
-        if (USE_MOCK) return mockApi.adminList(payload);
-        const { data } = await http.get("/admin/bookings", { params: payload });
-        return data;
+    adminList(params) {
+        if (USE_MOCK) return mockApi.adminList(params);
+        return http.get("/admin/bookings", { params }).then((r) => r.data);
     },
 
-    async adminSetStatus(payload) {
-        try {
-            if (USE_MOCK) return await mockApi.adminSetStatus(payload);
-            const { data } = await http.patch(`/admin/bookings/${payload.bookingId}/status`, {
-                status: payload.status,
-            });
-            return data;
-        } catch (e) {
-            toast.error(errMsg(e));
-            throw e;
-        }
+    adminSetStatus(dto) {
+        if (USE_MOCK) return mockApi.adminSetStatus(dto).catch((e) => (toast.error(e.message), Promise.reject(e)));
+        return http.patch(`/admin/bookings/${dto.bookingId}/status`, { status: dto.status }).then((r) => r.data)
+            .catch((e) => (toast.error(msg(e)), Promise.reject(e)));
     },
 };

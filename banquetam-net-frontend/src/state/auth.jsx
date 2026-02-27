@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 
 const AuthCtx = createContext(null);
 
@@ -8,19 +8,19 @@ export function AuthProvider({ children }) {
         return raw ? JSON.parse(raw) : null;
     });
 
-    const isAuthed = !!localStorage.getItem("token");
+    const isAuthed = !!localStorage.getItem("userToken");
 
     const value = useMemo(
         () => ({
             user,
             isAuthed,
             setSession: ({ token, user }) => {
-                localStorage.setItem("token", token);
+                localStorage.setItem("userToken", token);
                 localStorage.setItem("user", JSON.stringify(user));
                 setUser(user);
             },
             logout: () => {
-                localStorage.removeItem("token");
+                localStorage.removeItem("userToken");
                 localStorage.removeItem("user");
                 setUser(null);
             },
@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
-    const ctx = useContext(AuthCtx);
-    if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-    return ctx;
+    const v = useContext(AuthCtx);
+    if (!v) throw new Error("useAuth must be inside AuthProvider");
+    return v;
 }

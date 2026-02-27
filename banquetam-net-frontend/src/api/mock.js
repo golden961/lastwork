@@ -1,161 +1,117 @@
-const LS_USERS = "mock_users";
-const LS_BOOKINGS = "mock_bookings";
-const LS_REVIEWS = "mock_reviews";
-
-const STATUSES = ["Новая", "Банкет назначен", "Банкет завершен"];
+const LS_USERS = "bn_users";
+const LS_BOOKINGS = "bn_bookings";
+const LS_REVIEWS = "bn_reviews";
 
 const ROOMS = [
-    { id: "hall", label: "Зал", image: "/assets/66155ef0748e9.jpg" },
-    { id: "restaurant", label: "Ресторан", image: "/assets/unnamed%20(2).webp" },
-    { id: "summer", label: "Летняя веранда", image: "/assets/1671649122_idei-club-p-veranda-.jpg" },
-    { id: "closed", label: "Закрытая веранда", image: "/assets/3505f015e0d26644e8e4c.jpg" },
+    { id: "hall", label: "Зал", img: "/assets/66155ef0748e9.jpg" },
+    { id: "restaurant", label: "Ресторан", img: "/assets/unnamed%20(2).webp" },
+    { id: "summer", label: "Летняя веранда", img: "/assets/1671649122_idei-club-p-veranda-.jpg" },
+    { id: "closed", label: "Закрытая веранда", img: "/assets/3505f015e0d26644e8e4c.jpg" },
 ];
 
 function read(key, fallback) {
-    try {
-        const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : fallback;
-    } catch {
-        return fallback;
-    }
+    try { return JSON.parse(localStorage.getItem(key) || ""); } catch { return fallback; }
 }
-function write(key, val) {
-    localStorage.setItem(key, JSON.stringify(val));
-}
+function write(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
-function ensureSeed() {
-    const users = read(LS_USERS, null);
-    const bookings = read(LS_BOOKINGS, null);
-    const reviews = read(LS_REVIEWS, null);
-    if (!users) write(LS_USERS, []);
-    if (!bookings) write(LS_BOOKINGS, []);
-    if (!reviews) write(LS_REVIEWS, []);
+function seed() {
+    if (!read(LS_USERS, null)) write(LS_USERS, []);
+    if (!read(LS_BOOKINGS, null)) write(LS_BOOKINGS, []);
+    if (!read(LS_REVIEWS, null)) write(LS_REVIEWS, []);
 }
-
-function makeToken(payload) {
-    return btoa(JSON.stringify(payload));
-}
+function token(payload) { return btoa(JSON.stringify(payload)); }
 
 export const mockApi = {
     rooms() {
-        ensureSeed();
+        seed();
         return Promise.resolve({ rooms: ROOMS });
     },
 
-    register(data) {
-        ensureSeed();
+    register(dto) {
+        seed();
         const users = read(LS_USERS, []);
-        const exists = users.some((u) => u.login.toLowerCase() === data.login.toLowerCase());
-        if (exists) {
-            return Promise.reject({ message: "Логин уже занят" });
-        }
-        const user = { id: crypto.randomUUID(), ...data, password: data.password };
-        users.push(user);
+        const exists = users.some((u) => u.login.toLowerCase() === dto.login.toLowerCase());
+        if (exists) return Promise.reject({ message: "Логин уже занят" });
+        users.push({ id: crypto.randomUUID(), ...dto });
         write(LS_USERS, users);
         return Promise.resolve({ ok: true });
     },
 
     login({ login, password }) {
-        ensureSeed();
+        seed();
         const users = read(LS_USERS, []);
-        const user = users.find((u) => u.login === login);
-        if (!user || user.password !== password) {
-            return Promise.reject({ message: "Неверный логин или пароль" });
-        }
-        const token = makeToken({ userId: user.id });
+        const u = users.find((x) => x.login === login && x.password === password);
+        if (!u) return Promise.reject({ message: "Неверный логин или пароль" });
         return Promise.resolve({
-            token,
-            user: { id: user.id, login: user.login, fullName: user.fullName, phone: user.phone, email: user.email },
+            token: token({ userId: u.id }),
+            user: { id: u.id, login: u.login, fullName: u.fullName, phone: u.phone, email: u.email },
         });
     },
 
     myBookings(userId) {
-        ensureSeed();
-        const bookings = read(LS_BOOKINGS, []);
-        const mine = bookings.filter((b) => b.userId === userId);
-        return Promise.resolve({ bookings: mine, rooms: ROOMS });
+        seed();
+        const all = read(LS_BOOKINGS, []);
+        return Promise.resolve({ bookings: all.filter((b) => b.userId === userId), rooms: ROOMS });
     },
 
-    createBooking(userId, data) {
-        ensureSeed();
-        const bookings = read(LS_BOOKINGS, []);
+    createBooking(userId, dto) {
+        seed();
+        const all = read(LS_BOOKINGS, []);
         const booking = {
             id: crypto.randomUUID(),
             userId,
-            roomId: data.roomId,
-            date: data.date, // ДД.ММ.ГГГГ
-            paymentMethod: data.paymentMethod,
+            roomId: dto.roomId,
+            date: dto.date,
+            paymentMethod: dto.paymentMethod,
             status: "Новая",
             createdAt: new Date().toISOString(),
         };
-        bookings.unshift(booking);
-        write(LS_BOOKINGS, bookings);
+        all.unshift(booking);
+        write(LS_BOOKINGS, all);
         return Promise.resolve({ booking });
     },
 
-    createReview(userId, data) {
-        ensureSeed();
-        const bookings = read(LS_BOOKINGS, []);
-        const booking = bookings.find((b) => b.id === data.bookingId && b.userId === userId);
-        if (!booking) return Promise.reject({ message: "Заявка не найдена" });
+    createReview(userId, dto) {
+        seed();
+        const all = read(LS_BOOKINGS, []);
+        const reviews = read(LS_REVIEWS, []);
+        const b = all.find((x) => x.id === dto.bookingId && x.userId === userId);
+        if (!b) return Promise.reject({ message: "Заявка не найдена" });
 
-        // правило — пока строго после "Банкет завершен"
-        if (booking.status !== "Банкет завершен") {
-            return Promise.reject({ message: "Отзыв можно оставить только после завершения банкета" });
+        // СТРОГО по доп. ТЗ: отзыв доступен после изменения статуса админом (то есть НЕ "Новая")
+        if (b.status === "Новая") return Promise.reject({ message: "Отзыв доступен после подтверждения администратором" });
+
+        if (reviews.some((r) => r.bookingId === dto.bookingId)) {
+            return Promise.reject({ message: "Отзыв по этой заявке уже оставлен" });
         }
 
-        const reviews = read(LS_REVIEWS, []);
-        const exists = reviews.some((r) => r.bookingId === data.bookingId);
-        if (exists) return Promise.reject({ message: "Отзыв по этой заявке уже оставлен" });
-
-        reviews.unshift({
-            id: crypto.randomUUID(),
-            userId,
-            bookingId: data.bookingId,
-            text: data.text,
-            createdAt: new Date().toISOString(),
-        });
+        reviews.unshift({ id: crypto.randomUUID(), userId, bookingId: dto.bookingId, text: dto.text, createdAt: new Date().toISOString() });
         write(LS_REVIEWS, reviews);
         return Promise.resolve({ ok: true });
     },
 
     adminLogin({ login, password }) {
-        if (login === "Admin26" && password === "Demo20") {
-            const adminToken = makeToken({ admin: true });
-            return Promise.resolve({ adminToken });
-        }
+        if (login === "Admin26" && password === "Demo20") return Promise.resolve({ adminToken: token({ admin: true }) });
         return Promise.reject({ message: "Неверные данные администратора" });
     },
 
-    adminList({ status, sort = "desc", page = 1, pageSize = 5 }) {
-        ensureSeed();
-        const bookings = read(LS_BOOKINGS, []);
-        let data = [...bookings];
-
-        if (status && status !== "all") {
-            data = data.filter((b) => b.status === status);
-        }
-
-        data.sort((a, b) => {
-            const av = new Date(a.createdAt).getTime();
-            const bv = new Date(b.createdAt).getTime();
-            return sort === "asc" ? av - bv : bv - av;
-        });
-
-        const total = data.length;
+    adminList({ status = "all", sort = "desc", page = 1, pageSize = 6 }) {
+        seed();
+        let all = read(LS_BOOKINGS, []);
+        if (status !== "all") all = all.filter((b) => b.status === status);
+        all.sort((a, b) => (sort === "asc" ? +new Date(a.createdAt) - +new Date(b.createdAt) : +new Date(b.createdAt) - +new Date(a.createdAt)));
+        const total = all.length;
         const start = (page - 1) * pageSize;
-        const items = data.slice(start, start + pageSize);
-
-        return Promise.resolve({ items, total, rooms: ROOMS, statuses: STATUSES });
+        return Promise.resolve({ items: all.slice(start, start + pageSize), total, rooms: ROOMS });
     },
 
     adminSetStatus({ bookingId, status }) {
-        ensureSeed();
-        const bookings = read(LS_BOOKINGS, []);
-        const idx = bookings.findIndex((b) => b.id === bookingId);
+        seed();
+        const all = read(LS_BOOKINGS, []);
+        const idx = all.findIndex((b) => b.id === bookingId);
         if (idx === -1) return Promise.reject({ message: "Заявка не найдена" });
-        bookings[idx].status = status;
-        write(LS_BOOKINGS, bookings);
+        all[idx].status = status;
+        write(LS_BOOKINGS, all);
         return Promise.resolve({ ok: true });
     },
 };

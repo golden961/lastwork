@@ -9,6 +9,7 @@ import AdminPage from "./pages/AdminPage.jsx";
 
 import { AuthProvider } from "./state/auth.jsx";
 import ProtectedRoute from "./state/ProtectedRoute.jsx";
+import HomePage from "./pages/HomePage.jsx";
 
 export default function App() {
     return (
@@ -16,7 +17,7 @@ export default function App() {
             <div className="mobile-shell">
                 <Toaster position="top-center" />
                 <Routes>
-                    <Route path="/" element={<Navigate to="/login" replace />} />
+                    <Route path="/" element={<HomePage />} />
 
                     <Route path="/register" element={<RegisterPage />} />
                     <Route path="/login" element={<LoginPage />} />

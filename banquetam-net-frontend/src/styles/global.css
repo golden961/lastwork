@@ -1,53 +1,41 @@
 
-
-@tailwind components;
-@tailwind utilities;
-
-/* Oswald from public/fonts/Oswald/... (именно из твоего zip) */
 @font-face {
     font-family: "Oswald";
-    src: url("/fonts/Oswald/static/Oswald-Regular.ttf") format("truetype");
+    src: url("../assets/fonts/Oswald/static/Oswald-Regular.ttf") format("truetype");
     font-weight: 400;
-    font-style: normal;
 }
 @font-face {
     font-family: "Oswald";
-    src: url("/fonts/Oswald/static/Oswald-Medium.ttf") format("truetype");
+    src: url("../assets/fonts/Oswald/static/Oswald-Medium.ttf") format("truetype");
     font-weight: 500;
-    font-style: normal;
 }
 @font-face {
     font-family: "Oswald";
-    src: url("/fonts/Oswald/static/Oswald-SemiBold.ttf") format("truetype");
+    src: url("../assets/fonts/Oswald/static/Oswald-SemiBold.ttf") format("truetype");
     font-weight: 600;
-    font-style: normal;
 }
 @font-face {
     font-family: "Oswald";
-    src: url("/fonts/Oswald/static/Oswald-Bold.ttf") format("truetype");
+    src: url("../assets/fonts/Oswald/static/Oswald-Bold.ttf") format("truetype");
     font-weight: 700;
-    font-style: normal;
 }
 
 :root {
-    --gold: #daa520;
-    --rose: #ffdab9;
-    --cream: #fffdd0;
-    --crimson: #dc143c;
+    --gold: #DAA520;
+    --rose: #FFDAB9;
+    --cream: #FFFDD0;
+    --crimson: #DC143C;
     --green: #006400;
 }
 
-html, body, #root {
-    height: 100%;
-}
+html, body, #root { height: 100%; }
 
 body {
     font-family: Oswald, sans-serif;
-    background: var(--cream);
-    color: #000;
+    background: #0b0b0b; /* “рамка телефона” */
 }
 
-/* Контейнер под 390×844 */
+/* Мобильная оболочка 390×844 */
 .mobile-shell {
     max-width: 390px;
     min-height: 844px;
@@ -55,28 +43,50 @@ body {
     background: var(--cream);
 }
 
-/* Типографика по стилю */
-.h1 {
-    font-size: 36px;
-    color: var(--crimson);
+/* Типографика из ТЗ */
+.h1 { font-size: 36px; color: var(--crimson); font-weight: 700; line-height: 1.1; }
+.h2 { font-size: 24px; color: var(--gold); font-weight: 600; }
+.h3 { font-size: 18px; color: var(--gold); font-weight: 600; }
+.t16 { font-size: 16px; color: #000; }
+.t12 { font-size: 12px; color: var(--green); }
+
+/* Приятные контролы */
+.field {
+    width: 100%;
+    border: 1px solid rgba(0,0,0,.15);
+    background: #fff;
+    border-radius: 16px;
+    padding: 12px 12px;
+    outline: none;
+}
+.field:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(218,165,32,.25);
+}
+
+.card {
+    background: #fff;
+    border: 1px solid rgba(218,165,32,.55);
+    border-radius: 20px;
+}
+
+.btn-primary {
+    width: 100%;
+    background: var(--crimson);
+    color: #fff;
+    border-radius: 16px;
+    padding: 12px;
     font-weight: 700;
-    line-height: 1.1;
 }
-.h2 {
-    font-size: 24px;
+.btn-primary:active { transform: scale(0.99); }
+
+.btn-ghost {
+    width: 100%;
+    background: #fff;
     color: var(--gold);
-    font-weight: 600;
+    border: 1px solid rgba(218,165,32,.75);
+    border-radius: 16px;
+    padding: 12px;
+    font-weight: 700;
 }
-.h3 {
-    font-size: 18px;
-    color: var(--gold);
-    font-weight: 600;
-}
-.text-base-16 {
-    font-size: 16px;
-    color: #000;
-}
-.text-help-12 {
-    font-size: 12px;
-    color: var(--green);
-}
+.btn-ghost:active { transform: scale(0.99); }
