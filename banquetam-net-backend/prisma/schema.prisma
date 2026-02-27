@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  login        String   @unique
+  passwordHash String
+  fullName     String
+  phone        String
+  email        String
+  createdAt    DateTime @default(now())
+
+  bookings     Booking[]
+  reviews      Review[]
+}
+
+model Room {
+  id       Int      @id @default(autoincrement())
+  type     RoomType @unique
+  title    String
+  isActive Boolean  @default(true)
+
+  bookings Booking[]
+}
+
+model Booking {
+  id            Int           @id @default(autoincrement())
+  userId        Int
+  roomId        Int
+  startAt       DateTime
+  paymentMethod PaymentMethod
+  status        BookingStatus @default(NEW)
+  createdAt     DateTime      @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  room   Room   @relation(fields: [roomId], references: [id])
+  review Review?
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  bookingId Int      @unique
+  text      String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+enum RoomType {
+  HALL
+  RESTAURANT
+  SUMMER_TERRACE
+  INDOOR_TERRACE
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  ONLINE
+}
+
+enum BookingStatus {
+  NEW
+  SCHEDULED
+  DONE
+}
