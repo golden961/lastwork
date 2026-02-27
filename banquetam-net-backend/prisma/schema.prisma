@@ -7,6 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
+generator dbml {
+  provider = "prisma-dbml-generator"
+  output   = "../docs/module-1/erd/schema.dbml"
+}
 
 model User {
   id           Int      @id @default(autoincrement())
