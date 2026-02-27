@@ -24,3 +24,13 @@ http.interceptors.request.use((config) => {
 
     return config;
 });
+export async function apiFetch(path, { method = "GET", body, params, headers } = {}) {
+    const res = await http.request({
+        url: path,
+        method,
+        params,
+        data: body,        // важно: в axios тело запроса = data
+        headers,
+    });
+    return res.data;
+}

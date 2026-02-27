@@ -8,9 +8,10 @@ import HomePage from "./pages/HomePage.jsx";
 
 import AdminPage from "./pages/AdminPage.jsx";
 import {BookingPage} from "./pages/BookingPage.jsx";
-import {RegisterPage} from "./pages/RegisterPage.jsx";
-import {LoginPage} from "./pages/LoginPage.jsx";
+
 import {ProfilePage} from "./pages/ProfilePage.jsx";
+import RegisterPage from "./pages/RegisterPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
 
 export default function App() {
     return (
